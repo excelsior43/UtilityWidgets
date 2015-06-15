@@ -5,7 +5,7 @@ theElementState_.prototype.theClasses = [];
 theElementState_.prototype.theType = null;
 theElementState_.prototype.theText = null;
 
-$.fn.observe = function (eventName, callback) {
+$.fn.observe = function (eventName, callback) { // the backbone of this widget... 
     return this.each(function () {
         var el = this;
         $(document).on(eventName, function () {
@@ -14,17 +14,16 @@ $.fn.observe = function (eventName, callback) {
     });
 };
 
-
-
 $.widget("ib.genericDependency", {
     _create: function () {
-        this._initialize();
+		log(this.getElement());
+		if(this.element.size() >0)
+			this._initialize();
     },
     getElement: function () {
         return this.element;
     },
     processDependencies: function () {
-        
         if (this.checkCondition() === true) {
             this.triggerChange();
         } else {
@@ -32,36 +31,79 @@ $.widget("ib.genericDependency", {
         }
         this.notifyOthers();
     },
-    checkCondition: function () {
+    checkCondition: function (allConditions_) {
         var me = this;
-        var theConditionCheckValue = false;
-        $.each(this.options.conditions, function (index, item) {
+        if (typeof allConditions_ === 'undefined') {
+            allConditions_ = this.options.conditions;
+        }
+        var theConditionCheckValue = null;
+        $.each(allConditions_, function (index, item) {
+            var localCondition = null;
             $.each(item, function (selector_, permittedValues_) {
-                var theValue = me._getValue($(selector_));
-                if ($.inArray(me.options.ALWAYS_FALSE, permittedValues_) > -1) {
-                    theConditionCheckValue = false;
-                } else if ($.inArray(me.options.ALWAYS_TRUE, permittedValues_) > -1) {
-                    theConditionCheckValue = true;
-                } else if ($.inArray(me.options.NOT_EMPTY, permittedValues_) > -1 ) {
-                    var trimmedValue= $.trim(theValue);
-                    if(trimmedValue.length>0){
-                        theConditionCheckValue = true;
-                    }
-                }else {
-                    $.each(permittedValues_, function (indx, value_) {
-                        if (theValue === value_) {
-                            theConditionCheckValue = true;
+                localCondition = false;
+                if (typeof $(selector_) !== 'undefined') {
+                    var theValue = me._getSelectorValue($(selector_));
+                    /* if ($.inArray(me.options.ALWAYS_FALSE, permittedValues_) > -1) {  // cleaning up the code
+                        localCondition = false;
+                    } else if ($.inArray(me.options.ALWAYS_TRUE, permittedValues_) > -1) {
+                        localCondition = true;
+                    } else if ($.inArray(me.options.NOT_EMPTY, permittedValues_) > -1 ) {
+                        var trimmedValue= $.trim(theValue);
+                        log("the trimmed value :: "+trimmedValue.length);
+                        if(trimmedValue.length>0){
+                            localCondition = true;
                         }
-                    });
+                    }*/
+					if ($.inArray(me.options.ALWAYS_TRUE, permittedValues_) > -1) {
+                        localCondition = true;
+                    } else {
+                    $.each(permittedValues_, function (indx, value_) {
+                        if (me.getSubCondition(theValue, value_) === true) {
+                            localCondition = true;
+                        }
+                      });
+                    }   // Cleaning up the code 
                 }
             });
+			theConditionCheckValue = me.logicalCondition(theConditionCheckValue, localCondition);
         });
+        log("checkCondition PASSED ? " + theConditionCheckValue);
         return theConditionCheckValue;
     },
-    _getAllClasses: function (element_) {
+
+    logicalCondition: function (previousValue, currentValue) {
+		log("previousValue :: "+previousValue +" :: currentValue "+currentValue);
+		
+        if (previousValue === null) previousValue = currentValue;
+        var operator = this.options.theLogicalOperator;
+		var result=false;
+        if (operator === "OR") {
+            result= (previousValue || currentValue);
+        } else if (operator === "AND") {
+            result= (previousValue && currentValue);
+        } 
+		log("Final Result :"+result);
+        return result;
+    },
+    getSubCondition: function (actualValue, inValue) {
+        var theValue = inValue;
+		log("theValue :: "+theValue +" actualValue :: "+actualValue);
+        var cond = false;
+        if (theValue.indexOf('NOT_') === 0) {
+            theValue = theValue.substring(4);
+            cond = (actualValue !== theValue);
+        } else {
+            cond = (actualValue === theValue);
+        }
+        return cond;
+    },
+    _getAllClasses: function (element_) { 
         var theClasses = [];
         element_ = this.getElementIfUndefined(element_);
-        var classList = element_.attr('class').split(/\s+/);
+		if(typeof element_.attr('class')==='undefined'){
+			element_.attr('class','form_input');
+		}
+        var classList = element_.attr('class').split(/\s+/); 
         $.each(classList, function (index, item) {
             theClasses.push(item);
         });
@@ -73,15 +115,22 @@ $.widget("ib.genericDependency", {
         initialState.theValue = this._getValue();
         initialState.theStatus = this._getStatus();
         initialState.theClasses = this._getAllClasses();
-        initialState.theText=this._getText();
+        initialState.theText = this._getText();
         return initialState;
     },
     _initialize: function () {
         this._pre_init();
         this._setOption('_initialState', this._preserveInitialState());
+		var thePluginName = this.widgetName;
+		if(this.getElement().hasClass(thePluginName) === false){
+			this.getElement().addClass(thePluginName+"_Identifier");
+		}
         this._setOption('ALWAYS_TRUE', "ALWAYS_TRUE");
-        this._setOption('ALWAYS_FALSE', "ALWAYS_FALSE");
-        this._setOption('NOT_EMPTY', "NOT_EMPTY");
+        //this._setOption('ALWAYS_FALSE', "ALWAYS_FALSE");
+        //this._setOption('NOT_EMPTY', "NOT_EMPTY");
+        if (typeof this.options.emptyArray === 'undefined') {
+            this._setOption('emptyArray', [undefined, "-1", ""]);
+        }
         this.captureAllConditions();
         this.bindCustomEventToMyself();
         this._print();
@@ -92,6 +141,7 @@ $.widget("ib.genericDependency", {
         this.getElement().observe('changedMe' + thePluginName + me.getUniqueId() + 'Event', function (e) {
             var thePlugin = $(this).data(thePluginName);
             thePlugin._refresh();
+            //me._refresh();
         });
     },
     observeEventsOn: function (selector_, permittedValues_) {
@@ -111,30 +161,47 @@ $.widget("ib.genericDependency", {
             });
         });
     },
-    _pre_init: function () {
-    },
+    _pre_init: function () {},
     _print: function () {
+        log(this);
     },
     _getValue: function (element_) {
         element_ = this.getElementIfUndefined(element_);
-        return element_.val();
+		if(typeof element_ === 'undefined')
+			return "NONE_NOVALUE"; // hardcoded
+		else 
+			return element_.val();
     },
     _getText: function (element_) {
         element_ = this.getElementIfUndefined(element_);
-        var theText="";
+        var theText = "";
         if (this._getType() === 'select') {
-          theText= $("#"+element_.attr("id")+" :selected").text();  
+            theText = $("#" + element_.attr("id") + " :selected").text();
         }
+        log("the text :: " + theText);
         return theText;
     },
     _getType: function (element_) {
-        element_ = this.getElementIfUndefined(element_)[0];
-
+        element_ = this.getElementIfUndefined(element_);
+		/*if(typeof element_.prop("tagName") !=='undefined'){
+			return element_.prop("tagName").toLowerCase();
+		}
+		log(element_);
+		log("problem with the element "+element_.attr("id"));*/
+		element_=element_[0];
         return element_.tagName.toLowerCase() === "input" ? element_.type.toLowerCase() : element_.tagName.toLowerCase();
+		/*if(typeof element_.prop("tagName") !=='undefined'){
+			return element_.prop("tagName").toLowerCase();
+		}else if(typeof element_[0].tagName!=='undefined'){
+			return element_[0].tagName.toLowerCase() === "input" ? element_[0].type.toLowerCase() : element_[0].tagName.toLowerCase();
+		}else{
+			return "NoneTagFound";
+		}*/
     },
     _getStatus: function (element_) {
         if (typeof element_ === 'undefined') element_ = this.getElement();
         var typ = null;
+        //log("_getType :: " + this._getType());
         if (this._getType() === 'select') {
             var theId = element_.attr('sb');
             if (typeof theId !== 'undefined') {
@@ -148,7 +215,7 @@ $.widget("ib.genericDependency", {
     _refresh: function () {
         this.processDependencies();
     },
-    addInitialClasses: function () {
+	addInitialClasses: function () {
         var element_ = this.getElement();
         var preservedClasses = this.options._initialState.theClasses;
         var currentClasses = this._getAllClasses();
@@ -187,15 +254,9 @@ $.widget("ib.genericDependency", {
             }
         }
     },
-    revertChange: function () {
-    },
-    getNearestLabel: function () {
-        var theElement = this.getElement();
-        var label_ = theElement.closest('.section_div').children("label").first();
-        return label_;
-    },
+    revertChange: function () {},
     enableMyself: function (element_) {
-        element_ = this.getElementIfUndefined(element_);
+        element_ = this.getElementIfUndefined(element_);  
     },
     disableMyself: function (element_) {
         element_ = this.getElementIfUndefined(element_);
@@ -204,7 +265,7 @@ $.widget("ib.genericDependency", {
         if (typeof element_ === 'undefined') {
             element_ = this.getElement();
         }
-        return element_;
+		return element_;
     },
     getUniqueId: function () {
         var uid = this.options.uniqueId;
@@ -215,20 +276,28 @@ $.widget("ib.genericDependency", {
         }
         return uid;
     },
-    revertBackToInitialValue:function(){
+    revertBackToInitialValue: function () {
         var preservedValue = this.options._initialState.theValue;
         var element_ = this.getElement();
         if (preservedValue !== this._getValue()) {
             if (this._getType() === 'select') {
-                element_.selectbox("change",preservedValue,this.options._initialState.theText);
+                element_.selectbox("change", preservedValue, this.options._initialState.theText);
             } else {
                 element_.val(preservedValue);
             }
-          }
-        },
-        notifyOthers:function(element_){
-            element_=this.getElementIfUndefined();
-            element_.trigger('change');
         }
-        
+    },
+    notifyOthers: function (element_) {
+        element_ = this.getElementIfUndefined();
+        element_.trigger('change');
+    },
+	_getSelectorValue:function(selector){
+		var theRetValue=null;
+		if(this._getType(selector)==="radio"){
+			theRetValue=$(selector+":checked").val();
+		}else {
+			theRetValue=this._getValue(selector);
+		}
+		return theRetValue;
+	}
 });
