@@ -2,7 +2,6 @@ var theElementState_ = function () {};
 theElementState_.prototype.theValue = null;
 theElementState_.prototype.theStatus = null;
 theElementState_.prototype.theClasses = [];
-theElementState_.prototype.theType = null;
 theElementState_.prototype.theText = null;
 
 $.fn.observe = function (eventName, callback) { // the backbone of this widget... 
@@ -16,9 +15,8 @@ $.fn.observe = function (eventName, callback) { // the backbone of this widget..
 
 $.widget("ib.genericDependency", {
     _create: function () {
-		log(this.getElement());
-		if(this.element.size() >0)
-			this._initialize();
+        log(this.getElement());
+        if (this.element.size() > 0) this._initialize();
     },
     getElement: function () {
         return this.element;
@@ -43,51 +41,40 @@ $.widget("ib.genericDependency", {
                 localCondition = false;
                 if (typeof $(selector_) !== 'undefined') {
                     var theValue = me._getSelectorValue($(selector_));
-                    /* if ($.inArray(me.options.ALWAYS_FALSE, permittedValues_) > -1) {  // cleaning up the code
-                        localCondition = false;
-                    } else if ($.inArray(me.options.ALWAYS_TRUE, permittedValues_) > -1) {
-                        localCondition = true;
-                    } else if ($.inArray(me.options.NOT_EMPTY, permittedValues_) > -1 ) {
-                        var trimmedValue= $.trim(theValue);
-                        log("the trimmed value :: "+trimmedValue.length);
-                        if(trimmedValue.length>0){
-                            localCondition = true;
-                        }
-                    }*/
-					if ($.inArray(me.options.ALWAYS_TRUE, permittedValues_) > -1) {
+                    if ($.inArray(me.options.ALWAYS_TRUE, permittedValues_) > -1) {
                         localCondition = true;
                     } else {
-                    $.each(permittedValues_, function (indx, value_) {
-                        if (me.getSubCondition(theValue, value_) === true) {
-                            localCondition = true;
-                        }
-                      });
-                    }   // Cleaning up the code 
+                        $.each(permittedValues_, function (indx, value_) {
+                            if (me.getSubCondition(theValue, value_) === true) {
+                                localCondition = true;
+                            }
+                        });
+                    } // Cleaning up the code 
                 }
             });
-			theConditionCheckValue = me.logicalCondition(theConditionCheckValue, localCondition);
+            theConditionCheckValue = me.logicalCondition(theConditionCheckValue, localCondition);
         });
         log("checkCondition PASSED ? " + theConditionCheckValue);
         return theConditionCheckValue;
     },
 
     logicalCondition: function (previousValue, currentValue) {
-		log("previousValue :: "+previousValue +" :: currentValue "+currentValue);
-		
+        log("previousValue :: " + previousValue + " :: currentValue " + currentValue);
+
         if (previousValue === null) previousValue = currentValue;
         var operator = this.options.theLogicalOperator;
-		var result=false;
+        var result = false;
         if (operator === "OR") {
-            result= (previousValue || currentValue);
+            result = (previousValue || currentValue);
         } else if (operator === "AND") {
-            result= (previousValue && currentValue);
-        } 
-		log("Final Result :"+result);
+            result = (previousValue && currentValue);
+        }
+        log("Final Result :" + result);
         return result;
     },
     getSubCondition: function (actualValue, inValue) {
         var theValue = inValue;
-		log("theValue :: "+theValue +" actualValue :: "+actualValue);
+        log("theValue :: " + theValue + " actualValue :: " + actualValue);
         var cond = false;
         if (theValue.indexOf('NOT_') === 0) {
             theValue = theValue.substring(4);
@@ -97,13 +84,13 @@ $.widget("ib.genericDependency", {
         }
         return cond;
     },
-    _getAllClasses: function (element_) { 
+    _getAllClasses: function (element_) {
         var theClasses = [];
         element_ = this.getElementIfUndefined(element_);
-		if(typeof element_.attr('class')==='undefined'){
-			element_.attr('class','form_input');
-		}
-        var classList = element_.attr('class').split(/\s+/); 
+        if (typeof element_.attr('class') === 'undefined') {
+            element_.attr('class', 'form_input');
+        }
+        var classList = element_.attr('class').split(/\s+/);
         $.each(classList, function (index, item) {
             theClasses.push(item);
         });
@@ -111,7 +98,6 @@ $.widget("ib.genericDependency", {
     },
     _preserveInitialState: function () {
         var initialState = new theElementState_();
-        initialState.theType = this._getType();
         initialState.theValue = this._getValue();
         initialState.theStatus = this._getStatus();
         initialState.theClasses = this._getAllClasses();
@@ -121,10 +107,10 @@ $.widget("ib.genericDependency", {
     _initialize: function () {
         this._pre_init();
         this._setOption('_initialState', this._preserveInitialState());
-		var thePluginName = this.widgetName;
-		if(this.getElement().hasClass(thePluginName) === false){
-			this.getElement().addClass(thePluginName+"_Identifier");
-		}
+        var thePluginName = this.widgetName;
+        if (this.getElement().hasClass(thePluginName) === false) {
+            this.getElement().addClass(thePluginName + "_Identifier");
+        }
         this._setOption('ALWAYS_TRUE', "ALWAYS_TRUE");
         //this._setOption('ALWAYS_FALSE', "ALWAYS_FALSE");
         //this._setOption('NOT_EMPTY', "NOT_EMPTY");
@@ -141,7 +127,6 @@ $.widget("ib.genericDependency", {
         this.getElement().observe('changedMe' + thePluginName + me.getUniqueId() + 'Event', function (e) {
             var thePlugin = $(this).data(thePluginName);
             thePlugin._refresh();
-            //me._refresh();
         });
     },
     observeEventsOn: function (selector_, permittedValues_) {
@@ -167,42 +152,32 @@ $.widget("ib.genericDependency", {
     },
     _getValue: function (element_) {
         element_ = this.getElementIfUndefined(element_);
-		if(typeof element_ === 'undefined')
-			return "NONE_NOVALUE"; // hardcoded
-		else 
-			return element_.val();
+        var retVal = null;
+        if (element_.prop("type") === 'radio') {
+            element_.each(function (indx, elm) {
+                if ($(this).is(":checked")) {
+                    retVal = $(this).val();
+                }
+            });
+        } else {
+            retVal = element_.val();
+        }
+        return retVal;
     },
     _getText: function (element_) {
         element_ = this.getElementIfUndefined(element_);
         var theText = "";
-        if (this._getType() === 'select') {
-            theText = $("#" + element_.attr("id") + " :selected").text();
+        if (element_.is('select')) {
+            //theText = $("#" + element_.attr("id") + " :selected").text();
+            theText = element_.find(":selected").text();
         }
         log("the text :: " + theText);
         return theText;
     },
-    _getType: function (element_) {
-        element_ = this.getElementIfUndefined(element_);
-		/*if(typeof element_.prop("tagName") !=='undefined'){
-			return element_.prop("tagName").toLowerCase();
-		}
-		log(element_);
-		log("problem with the element "+element_.attr("id"));*/
-		element_=element_[0];
-        return element_.tagName.toLowerCase() === "input" ? element_.type.toLowerCase() : element_.tagName.toLowerCase();
-		/*if(typeof element_.prop("tagName") !=='undefined'){
-			return element_.prop("tagName").toLowerCase();
-		}else if(typeof element_[0].tagName!=='undefined'){
-			return element_[0].tagName.toLowerCase() === "input" ? element_[0].type.toLowerCase() : element_[0].tagName.toLowerCase();
-		}else{
-			return "NoneTagFound";
-		}*/
-    },
     _getStatus: function (element_) {
         if (typeof element_ === 'undefined') element_ = this.getElement();
         var typ = null;
-        //log("_getType :: " + this._getType());
-        if (this._getType() === 'select') {
+        if (element_.is("select")) {
             var theId = element_.attr('sb');
             if (typeof theId !== 'undefined') {
                 typ = !($("#sbHolder_" + theId).hasClass('sbHolderDisabled'));
@@ -215,7 +190,7 @@ $.widget("ib.genericDependency", {
     _refresh: function () {
         this.processDependencies();
     },
-	addInitialClasses: function () {
+    addInitialClasses: function () {
         var element_ = this.getElement();
         var preservedClasses = this.options._initialState.theClasses;
         var currentClasses = this._getAllClasses();
@@ -224,13 +199,11 @@ $.widget("ib.genericDependency", {
             element_.removeClass(classs);
         });
     },
-    getTranslatedId: function (element_) {
+    getTranslatedIdForSelectBox: function (element_) {
         element_ = this.getElementIfUndefined(element_);
-        if (this._getType() === 'select') {
+        if (element_.is("select")) {
             var theId = element_.attr('sb');
             return "sbHolder_" + theId;
-        } else {
-            return element_.attr('id');
         }
 
     },
@@ -238,8 +211,8 @@ $.widget("ib.genericDependency", {
         var preservedStatus = this.options._initialState.theStatus;
         var element_ = this.getElement();
         if (preservedStatus !== this._getStatus()) {
-            var theTranslatedId = this.getTranslatedId();
-            if (this._getType() === 'select') {
+            if (element_.is("select")) {
+                var theTranslatedId = this.getTranslatedIdForSelectBox();
                 if (preservedStatus === 'enabled') {
                     $("#" + theTranslatedId).addClass('sbHolderDisabled');
                 } else {
@@ -247,16 +220,16 @@ $.widget("ib.genericDependency", {
                 }
             } else {
                 if (preservedStatus === 'enabled') {
-                    $("#" + theTranslatedId).prop("disabled", true);
+                    element_.prop("disabled", true);
                 } else {
-                    $("#" + theTranslatedId).prop("disabled", false);
+                    element_.prop("disabled", false);
                 }
             }
         }
     },
     revertChange: function () {},
     enableMyself: function (element_) {
-        element_ = this.getElementIfUndefined(element_);  
+        element_ = this.getElementIfUndefined(element_);
     },
     disableMyself: function (element_) {
         element_ = this.getElementIfUndefined(element_);
@@ -265,13 +238,12 @@ $.widget("ib.genericDependency", {
         if (typeof element_ === 'undefined') {
             element_ = this.getElement();
         }
-		return element_;
+        return element_;
     },
     getUniqueId: function () {
         var uid = this.options.uniqueId;
         if (typeof uid === 'undefined') {
-            var num = Math.floor((Math.random() * 10000) + 1);
-            uid = this.getElement().attr("id") + num;
+            uid = $.now() + Math.floor((Math.random() * 10000) + 1);
             this._setOption('uniqueId', uid);
         }
         return uid;
@@ -280,7 +252,7 @@ $.widget("ib.genericDependency", {
         var preservedValue = this.options._initialState.theValue;
         var element_ = this.getElement();
         if (preservedValue !== this._getValue()) {
-            if (this._getType() === 'select') {
+            if (element_.is("select")) {
                 element_.selectbox("change", preservedValue, this.options._initialState.theText);
             } else {
                 element_.val(preservedValue);
@@ -291,13 +263,9 @@ $.widget("ib.genericDependency", {
         element_ = this.getElementIfUndefined();
         element_.trigger('change');
     },
-	_getSelectorValue:function(selector){
-		var theRetValue=null;
-		if(this._getType(selector)==="radio"){
-			theRetValue=$(selector+":checked").val();
-		}else {
-			theRetValue=this._getValue(selector);
-		}
-		return theRetValue;
-	}
+    _getSelectorValue: function (selector) {
+        var theRetValue = null;
+        theRetValue = this.getValue($(selector));
+        return theRetValue;
+    }
 });
