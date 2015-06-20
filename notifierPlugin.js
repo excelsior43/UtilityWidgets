@@ -1,18 +1,3 @@
-var theElementState_ = function () {};
-theElementState_.prototype.theValue = null;
-theElementState_.prototype.theStatus = null;
-theElementState_.prototype.theClasses = [];
-theElementState_.prototype.theText = null;
-
-$.fn.observe = function (eventName, callback) { // the backbone of this widget... 
-    return this.each(function () {
-        var el = this;
-        $(document).on(eventName, function () {
-            callback.apply(el, arguments);
-        });
-    });
-};
-
 $.widget("ib.genericDependency", {
     _create: function () {
         log(this.getElement());
@@ -269,3 +254,19 @@ $.widget("ib.genericDependency", {
         return theRetValue;
     }
 });
+
+
+var theElementState_ = function () {};
+theElementState_.prototype.theValue = null;
+theElementState_.prototype.theStatus = null;
+theElementState_.prototype.theClasses = [];
+theElementState_.prototype.theText = null;
+
+$.fn.observe = function (eventName, callback) { // the backbone of this widget... 
+    return this.each(function () {
+        var el = this;
+        $(document).on(eventName, function () {
+            callback.apply(el, arguments);
+        });
+    });
+};
